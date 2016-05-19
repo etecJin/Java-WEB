@@ -1,0 +1,190 @@
+package br.com.DAO;
+
+import br.com.Util.TipoSO;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Properties;
+
+/**
+ * Classe que abstrai uma conexão com o banco de dados.
+ *
+ * @author thiagoma
+ */
+public class FactoryConexao {
+
+    private static final String CHAVE_A = "4B45593234303839";
+    private static String stringConexao;
+    private static Properties properties;
+    public static String caminhoArquivosXml;
+    public static String pathLog;
+    public static String caminhoProcessadosXML;
+    
+    static {
+        Properties prop = new Properties();
+
+        try {
+            if (TipoSO.isWindows()) {
+                prop.load(new FileInputStream("c:\\app\\config.properties"));
+            } else {
+                prop.load(new FileInputStream("/app/config.properties"));
+            }
+        } catch (IOException iOException) {
+            iOException.printStackTrace();
+        }
+
+        String ip = prop.getProperty("ip.banco");
+        String caminho_bd = prop.getProperty("path.banco").concat("?lc_ctype=WIN1252");
+        String porta_bd = prop.getProperty("porta.banco");
+        String senha = prop.getProperty("senha.banco");
+        
+        caminhoProcessadosXML = prop.getProperty("diretorio.ArquivosXml.Processados");
+        caminhoArquivosXml = prop.getProperty("diretorio.ArquivosXml");
+         pathLog = prop.getProperty("diretorio.log");
+        
+        String user = "SYSDBA";
+
+        Properties propConnnection = new Properties();
+        propConnnection.put("user", user);
+        propConnnection.put("password", senha);
+        propConnnection.put("lc_ctype", "WIN1252");
+        propConnnection.put("TRANSACTION_READ_COMMITTED", "read_committed,rec_version,nowait");
+
+        properties = propConnnection;
+        stringConexao = "jdbc:firebirdsql:" + ip + "/" + porta_bd + ":" + caminho_bd;
+    }
+
+    /**
+     * Obtem uma conexão com o banco de dados. AutoCommit = FALSE
+     *
+     * @return Conexão com o banco de dados.
+     * @throws java.lang.Exception
+     */
+    public Connection getConexao() throws Exception {
+        Connection con = null;
+
+        Class.forName("org.firebirdsql.jdbc.FBDriver");
+
+        con = DriverManager.getConnection(stringConexao, properties);
+
+        con.setAutoCommit(false);
+
+        con.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+
+        return con;
+    }
+
+   
+    public long getNextGeneratorValue(String generator) throws Exception {
+        return this.getGeneratorValue(generator, 1);
+    }
+
+    public long getCurrentGeneratorValue(String generator) throws Exception {
+        return this.getGeneratorValue(generator, 0);
+    }
+
+    public void setGeneratorValue(String generator, long value) throws Exception {
+        Connection con = null;
+        PreparedStatement pstmt = null;
+
+        try {
+            con = this.getConexao();
+
+            pstmt = con.prepareStatement(String.format("SET GENERATOR %s TO %d", generator, value));
+
+            pstmt.execute();
+
+            con.commit();
+        } catch (SQLException ex) {
+            if (con != null && !con.isClosed()) {
+                con.rollback();
+            }
+
+            throw ex;
+        } finally {
+            fecharConexao(con, pstmt);
+        }
+    }
+
+    private long getGeneratorValue(String generator, int incrementValue) throws Exception {
+        long valor = 0;
+        Connection con = null;
+        ResultSet rs = null;
+        PreparedStatement pstt = null;
+
+        try {
+            String sql = String.format("SELECT GEN_ID(%s, %d) VALOR FROM RDB$DATABASE",
+                    generator, incrementValue);
+
+            con = this.getConexao();
+            pstt = con.prepareStatement(sql);
+            rs = pstt.executeQuery();
+
+            if (rs.next()) {
+                valor = rs.getLong("VALOR");
+            }
+
+            con.commit();
+        } catch (SQLException ex) {
+            if (con != null && !con.isClosed()) {
+                con.rollback();
+            }
+
+            throw ex;
+        } finally {
+            fecharConexao(con, pstt, rs);
+        }
+
+        return valor;
+    }
+
+    /**
+     * Fecha a conexão com a base de dados
+     *
+     * @param con com a base de dados
+     * @param pstmt do sql
+     * @param rs resultset
+     */
+    public static void fecharConexao(Connection con, PreparedStatement pstmt, ResultSet rs) {
+        try {
+            fecharConexao(con, pstmt);
+
+            if (rs != null) {
+                rs.close();
+            }
+        } catch (SQLException ex) {
+        }
+    }
+
+    /**
+     * Fecha a conexão com a base de dados
+     *
+     * @param con conexão com a base de dados
+     * @param pstmt pstmt do sql
+     */
+    public static void fecharConexao(Connection con, PreparedStatement pstmt) {
+        try {
+            if (con != null) {
+                con.close();
+            }
+
+            if (pstmt != null) {
+                pstmt.close();
+            }
+        } catch (SQLException ex) {
+        }
+    }
+
+    public static void rollback(Connection con) {
+        try {
+            if (con != null) {
+                con.rollback();
+            }
+        } catch (SQLException ex) {
+        }
+    }
+}

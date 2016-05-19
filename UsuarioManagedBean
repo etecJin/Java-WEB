@@ -1,0 +1,88 @@
+
+package br.com.Control;
+
+import br.com.DAO.UsuarioDao;
+import br.com.Model.UsuarioModelo;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import javax.inject.Named;
+import javax.enterprise.context.RequestScoped;
+import javax.faces.application.FacesMessage;
+import javax.faces.context.FacesContext;
+import org.primefaces.context.RequestContext;
+
+
+@Named(value = "usuarioManagedBean")
+@RequestScoped
+public class UsuarioManagedBean {
+
+    private UsuarioModelo usuario;
+    private UsuarioModelo usuarioSelecionado;
+   
+    
+    public UsuarioManagedBean() {
+        usuario = new UsuarioModelo();
+        usuarioSelecionado = new UsuarioModelo();
+    }
+    
+    public boolean cadastroValido(){
+        if (!usuario.getLogin().equals("")) {
+            if(!usuario.getSenha().equals("")){
+                return true;
+                
+            }else{
+            FacesContext.getCurrentInstance().addMessage("msg",new FacesMessage(FacesMessage.SEVERITY_INFO,"ERRO!","Digite a Senha"));
+            RequestContext.getCurrentInstance().execute("campoObrigatorio()");
+            return false;
+            }//fechamento primeiro else
+                        
+            }else{
+            FacesContext.getCurrentInstance().addMessage("msg",new FacesMessage(FacesMessage.SEVERITY_INFO,"ERRO!","Digite a Senha"));
+            RequestContext.getCurrentInstance().execute("campoObrigatorio()");
+            return false;
+        }//Fechamento Segundo Else
+    }//Fechamento Metodo cadastroValido
+    
+    public void inserir() throws Exception{
+        if(cadastroValido()){
+            new UsuarioDao().gravarUsuario(usuario);
+            RequestContext.getCurrentInstance().execute("camposObrigatorios()");
+        }
+    } 
+    
+    public void delete(){
+        if(new UsuarioDao().deleteUsuario(usuarioSelecionado)){
+            FacesContext.getCurrentInstance().addMessage("msg",new FacesMessage(FacesMessage.SEVERITY_INFO,"Contato Excluido",""));  
+        }else{
+            FacesContext.getCurrentInstance().addMessage("msg",new FacesMessage(FacesMessage.SEVERITY_INFO,"Selecione algum contato",""));
+            RequestContext.getCurrentInstance().execute("delete.hide()");
+        }
+    }
+    
+    public List<UsuarioModelo> selecionaTudo() throws Exception{
+
+      List<UsuarioModelo>list = new UsuarioDao().pesquisaUsuario();
+      return list;
+    }
+
+    public UsuarioModelo getUsuario() {
+        return usuario;
+    }
+
+    public void setUsuario(UsuarioModelo usuario) {
+        this.usuario = usuario;
+    }
+
+    public UsuarioModelo getUsuarioSelecionado() {
+        return usuarioSelecionado;
+    }
+
+    public void setUsuarioSelecionado(UsuarioModelo usuarioSelecionado) {
+        this.usuarioSelecionado = usuarioSelecionado;
+    }
+    
+    
+    
+}//Fechamento  Classe ManagedBean

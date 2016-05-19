@@ -1,0 +1,99 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package br.com.DAO;
+
+import br.com.Model.UsuarioModelo;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ *
+ * @author PedroUltra
+ */
+public class UsuarioDao {
+    
+    FactoryConexao factory = null;
+    
+    public UsuarioDao()
+    {
+       factory = new FactoryConexao(); 
+    }
+    
+    public List<UsuarioModelo>  pesquisaUsuario() throws Exception
+    {
+        //String resultado = "";
+        Connection conn;
+        PreparedStatement sql;
+        ResultSet rs ;
+        List<UsuarioModelo>list = new ArrayList<UsuarioModelo>();
+     try{   
+       conn = factory.getConexao();  
+       sql = conn.prepareStatement("SELECT * FROM usuario");  
+       rs = sql.executeQuery();  
+         
+        UsuarioModelo usuarios;
+        while(rs.next()){
+              usuarios = new UsuarioModelo();
+              usuarios.setIdUsuario(Integer.parseInt(rs.getString("idUsuario")));
+              usuarios.setLogin(rs.getString("login"));
+              usuarios.setNome(rs.getString("nome"));
+              list.add(usuarios);
+
+          }
+       conn.close();
+       return list;    
+     }catch(Exception x){        
+       return null;  
+     }
+     
+    }
+    
+    public boolean gravarUsuario(UsuarioModelo usuario) throws SQLException, Exception{
+        Connection conn;
+        PreparedStatement sql;
+        ResultSet rs;
+        try {
+            conn = factory.getConexao();            
+            sql = conn.prepareStatement("insert into usuario(nome,login,senha) values ("
+                    + "'"+usuario.getNome()+"'"
+                    + ",'"+usuario.getLogin()+"'"
+                    + ",'"+usuario.getSenha()+"')");
+            rs = sql.executeQuery();
+
+            conn.commit();
+            conn.close();
+            return true;
+     }catch(Exception x){  
+       return false;  
+     }
+        /*} finally {
+            FactoryConexao.fecharConexao(conn, sql);
+        }*/   
+       // return gravado;
+    
+    }
+    public boolean deleteUsuario(UsuarioModelo usuario){   
+       Connection conn;
+       PreparedStatement sql;
+
+       try{   
+        conn = factory.getConexao();  
+        sql = conn.prepareStatement("DELETE FROM usuario WHERE id="+usuario.getIdUsuario());  
+        sql.execute();   
+        conn.close();  
+       return true;
+       
+     }catch(Exception x){  
+       return false;  
+     }  
+   }
+    
+    
+}
